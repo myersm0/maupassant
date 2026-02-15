@@ -1,9 +1,9 @@
 :root {
-	--color-bg: #faf8f5;
-	--color-text: #2c2c2c;
+	--color-bg: #f0f4f8;
+	--color-text: #3c3f41;
 	--color-text-secondary: #6b6b6b;
-	--color-accent: #803030;
-	--color-accent-hover: #601818;
+	--color-accent: #007c92;
+	--color-accent-hover: #d6e9d6;
 	--color-border: #e0dcd6;
 	--color-code-bg: #f0ece6;
 
@@ -26,6 +26,18 @@ html {
 
 html {
 	overflow-y: scroll;
+}
+
+html {
+	background: #3c3f41;
+	padding: 2rem;
+	min-height: border-box;
+}
+
+body {
+	background: var(--color-bg);
+	margin: 0;
+   min-height: calc(100vh - 4rem);
 }
 
 body {
