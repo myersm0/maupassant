@@ -28,15 +28,13 @@ html {
 
 body {
   background: var(--color-bg);
+  color: var(--color-text);
   margin: 0;
-   min-height: calc(100vh - 4rem);
+  min-height: calc(100vh - 4rem);
   font-family: var(--font-body);
   font-weight: 400;
   line-height: 1.7;
-  color: var(--color-text);
-  background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
-  background: #f0f4f8;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.38);
 }
 
@@ -70,7 +68,8 @@ a:hover {
 
 .sidenote {
   position: absolute;
-  right: -18rem;
+  left: 100%;
+  margin-left: 6rem;
   width: 12rem;
   font-size: 0.8rem;
   color: var(--color-text-secondary);
@@ -100,12 +99,13 @@ a:hover {
 
 .site-nav {
   border-bottom: 1px solid var(--color-border);
-  padding: 1.2rem 2rem;
+  padding: 1.2rem 0;
 }
 
 .nav-inner {
-  max-width: var(--width-wide);
+  max-width: var(--width-content);
   margin: 0 auto;
+  padding: 0 2rem;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -122,7 +122,7 @@ a:hover {
 .site-subtitle {
   display: block;
   font-weight: 400;
-  font-size: 0.75em;
+  font-size: 0.8em;
   color: var(--color-text-secondary);
 }
 
