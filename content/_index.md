@@ -1,5 +1,5 @@
 +++
-title = "A Study - Maupassant in English"
+title = "A Study - Maupassant in Translation"
 description = "Corpus linguistics, literary translation, and the short stories of Guy de Maupassant"
 sort_by = "date"
 +++

@@ -1,7 +1,7 @@
 # Project Maupassant — Zola configuration
 # Docs: https://www.getzola.org/documentation/getting-started/configuration/
 
-base_url = "https://myersm0.github.io/maupassant"
+base_url = "https://myersm0.github.io/maupassant-study"
 
 title = "A Study"
 description = "Corpus linguistics, translation, and the stories of Guy de Maupassant"
@@ -23,4 +23,4 @@ theme = "catppuccin-latte"
 
 [extra]
 author = "Michael J. Myers"
-subtitle = "Maupassant in English"
+subtitle = "Maupassant in Translation"
