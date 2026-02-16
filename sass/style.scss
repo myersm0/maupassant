@@ -43,7 +43,7 @@ body {
 a {
   color: var(--color-accent-hover);
   text-decoration: none;
-  transition: color 0.15s;
+  transition: all 0.35s;
   border: 0px solid rgba(0, 0, 0, 0.00);
   padding: 0.1em 0.0em;
   border-radius: 2px;
@@ -52,6 +52,14 @@ a {
 a:hover {
   background: #ffc107;
   color: var(--color-accent-hover);
+}
+
+.dedication {
+  color: #ff6f61;
+  text-align: right;
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+  margin: 1rem 0;
 }
 
 
