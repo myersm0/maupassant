@@ -5,7 +5,7 @@
   --color-accent: #007c92;
   --color-accent-hover: #007c92;
   --color-border: #e0dcd6;
-  --color-code-bg: #f0ece6;
+  --color-code-bg: #e0e4e7;
   --font-body: 'Crimson Pro', Georgia, serif;
   --font-ui: 'Source Sans 3', sans-serif;
   --width-content: 42rem;
@@ -428,6 +428,31 @@ main {
   font-family: var(--font-ui);
   font-size: 0.8rem;
   color: var(--color-text-secondary);
+}
+
+
+/* ---- Citation ---- */
+.citation {
+	cursor: pointer;
+	padding: 0.3rem 1rem;
+	background: var(--color-code-bg);
+	border-radius: 3px;
+	margin: 0.5rem 0 1.5rem;
+	transition: background 0.2s;
+}
+
+.citation:hover {
+	background: #ffc107;
+}
+
+.citation.copied {
+	background: #d6e9d6;
+}
+
+.citation pre {
+	margin: 0;
+	background: none;
+	padding: 0;
 }
 
 
