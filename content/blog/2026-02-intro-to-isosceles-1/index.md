@@ -10,7 +10,7 @@ tags = ["alignment"]
 # Isosceles: a corpus of 19th-century French-English pairs
 This corpus is fundamental to my planned work around Maupassant's stories and the practice of literary translation. I expect it may be useful in other research applications, too, and so have released the full data on [GitHub](https://github.com/myersm0/isosceles) as well as the code for assembling the corpus and running several post-processing tasks (some of which are novel and will be written up on this site in the near future).
 
-In this post I quickly introduce the corpus to anyone interested in working with it, and as contextual grounding for my future work.
+In this post I quickly introduce the corpus to anyone interested in working with it, and as contextual grounding for later work.
 
 ## Composition and motivation
 Guy de Maupassant wrote more than 300 short stories. The most complete English translations available are those by McMaster, Henderson, Quesada, and others, hereafter referred to as McMaster et al. These translations, covering about half of Maupassant's stories, are available at [Project Gutenberg](https://www.gutenberg.org/files/3090/3090-h/3090-h.htm) and reprinted in countless e-editions. For the French originals I used the texts available at [maupassant.free.fr](http://maupassant.free.fr), digitized from the authoritative Pléiade edition (Forestier 1987).
