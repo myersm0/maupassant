@@ -11,7 +11,7 @@ tags = ["annotation", "methodology", "tools", "Universal Dependencies"]
 
 # Toward a better model for linguistic annotation of 19th-century French literature
 ## Overview
-It's well known that NLP tools trained on modern corpora degrade in practice when used on historical literary text (Gladstone et al., 2025). In my experience attempting to annotate this corpus of ~7 million tokens of French literary text from 1840 to 1920, I found that Stanza, spaCy, and CoreNLP all exhibit systematic errors on *passé simple* constructions, rare subjunctive forms, and irregular verb morphology, among other things. Manual correction would be impractical for a corpus of this size, and an expensive round of LLM annotation would tend to introduce error patterns of its own (Gladstone et al., 2025 describe a related approach using full-sentence LLM annotation, but acknowledge that their synthetic ground truth likely still contains systematic errors).
+It's well known that NLP tools trained on modern corpora degrade in practice when used on historical literary text (Gladstone, Fang, & Stewart, 2025). In my experience attempting to annotate this corpus of ~7 million tokens of French literary text from 1840 to 1920, I found that Stanza, spaCy, and CoreNLP all exhibit systematic errors on *passé simple* constructions, rare subjunctive forms, and irregular verb morphology, among other things. Manual correction would be impractical for a corpus of this size, and an expensive round of LLM annotation would tend to introduce error patterns of its own (Gladstone et al. describe a related approach using full-sentence LLM annotation, but acknowledge that their synthetic ground truth likely still contains systematic errors).
 
 This post describes an alternative: a layered correction pipeline that combines rule-based checks, cross-pipeline comparison, and targeted local LLM classifiers to flag likely errors, then escalates only the flagged tokens to a stronger model for final adjudication. This approach is cheaper and more accurate than sending raw parser output through a single, more powerful LLM, and can be run with on-device models on consumer hardware (e.g. a MacBook M4 Pro, 24 GB RAM).
 
@@ -49,7 +49,7 @@ A few other confirmed cross-verb confusions:
 - `pourrions` → `pourrir` (should be `pouvoir`)
 
 ### Conditional and subjunctive misanalysis
-Some verb forms are being labeled as the wrong tense. For example, conditional forms are marked as present tense, and literary past subjunctive forms are marked as simple indicative forms. But these forms have distinct endings in French. A word like `retournerait`, for example, cannot be present tense — its ending marks it as conditional.
+Some verb forms are being labeled as the wrong tense. For example, conditional forms are marked as present tense, and literary past subjunctive forms are marked as simple indicative forms. But these forms have distinct endings in French. A word like `retournerait`, for example, cannot be present tense — its ending marks it as conditional (Grevisse & Goosse, 2016, §809).
 
 ## The layered correction pipeline
 The pipeline combines three layers of detection. Tokens flagged by any layer are escalated to a stronger model (Claude Sonnet) for final adjudication, described in a later section.
@@ -59,7 +59,7 @@ The first layer handles cases where errors can be detected deterministically wit
 
 - Each lemma is checked against a period-appropriate dictionary, Littré's _Dictionnaire de la langue française_ (1872–1877).
 
-- Some verb forms are unambiguous on their own: the passé simple endings `-âmes`, `-âtes`, `-èrent` can only belong to one tense, regardless of context. A small set of heuristics detects violations of these rules.
+- Some verb forms are unambiguous on their own: the passé simple endings `-âmes`, `-âtes`, `-èrent` can only belong to one tense (Grevisse & Goosse, 2016, §803). A small set of heuristics detects violations of these rules.
 
 - A simple subject-verb agreement checker flags mismatches between unambiguous subject pronouns and the verb's `Person` feature.
 
@@ -127,5 +127,6 @@ Once processing completes in early March, 2026, my training set of ELTeC French 
 The corpus, annotation scripts, and comparison tools are available at [github.com/myersm0/isosceles](https://github.com/myersm0/isosceles).
 
 ## References
-- Gladstone, C., Fang, Z., and Stewart, S.D. (2025). "Ground Truth Generation for Multilingual Historical NLP using LLMs." *Proceedings of the Conference of the Alliance of Digital Humanities Organizations*.
+- Gladstone, C., Fang, Z., & Stewart, S. D. (2025). Ground truth generation for multilingual historical NLP using LLMs. Proceedings of the Conference of the Alliance of Digital Humanities Organizations.
+- Grevisse, M., & Goosse, A. (2016). Le Bon Usage (16th ed., §§803, 809). De Boeck Supérieur.
 
