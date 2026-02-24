@@ -1,7 +1,7 @@
 +++
-title = "Intro to Isosceles, part 2"
+title = "Toward a better annotation model for 19th-century French literature"
 date = 2026-02-23
-description = "Toward a better model for linguistic annotation of 19th-century French literature"
+description = "Building a layered annotation pipeline that combines rule-based checks, cross-pipeline comparison, and local LLM classifiers to improve CoNLL-U accuracy on literary French."
 
 [taxonomies]
 tags = ["annotation", "methodology", "tools", "Universal Dependencies"]
