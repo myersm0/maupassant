@@ -11,26 +11,11 @@ tags = ["annotation", "methodology", "tools", "Universal Dependencies"]
 
 # Toward a better model for linguistic annotation of 19th-century French literature
 ## Overview
-It's well known that NLP tools trained on modern corpora degrade in practice when used on historical literary text (Gladstone et al., 2025). In my experience attempting to annotate this corpus of ~7 million tokens of French literary text from 1840 to 1920, I found that Stanza, spaCy, and CoreNLP all exhibited systematic errors on *passé simple* constructions, rare subjunctive forms, and irregular verb morphology. Manual correction would be impractical for a corpus of this size, and an expensive round of LLM annotation would tend to introduce error patterns of its own (Gladstone et al., 2025 describe a related approach using full-sentence LLM annotation, but acknowledge that their synthetic ground truth likely still contains systematic errors).
+It's well known that NLP tools trained on modern corpora degrade in practice when used on historical literary text (Gladstone et al., 2025). In my experience attempting to annotate this corpus of ~7 million tokens of French literary text from 1840 to 1920, I found that Stanza, spaCy, and CoreNLP all exhibit systematic errors on *passé simple* constructions, rare subjunctive forms, and irregular verb morphology, among other things. Manual correction would be impractical for a corpus of this size, and an expensive round of LLM annotation would tend to introduce error patterns of its own (Gladstone et al., 2025 describe a related approach using full-sentence LLM annotation, but acknowledge that their synthetic ground truth likely still contains systematic errors).
 
-This post describes an annotation correction pipeline built around several highly targeted per-task classifiers running on consumer hardware (MacBook M4 Pro with 24 GB RAM). The pipeline combines three layers of detection:
+This post describes an alternative: a layered correction pipeline that combines rule-based checks, cross-pipeline comparison, and targeted local LLM classifiers to flag likely errors, then escalates only the flagged tokens to a stronger model for final adjudication. This approach is cheaper and more accurate than sending raw parser output through a single, more powerful LLM, and can be run with on-device models on consumer hardware (e.g. a MacBook M4 Pro, 24 GB RAM).
 
-First, rule-based classifiers handle cases where the errors can be spotted deterministically with high likelihood:
-- Dictionary lookup against Littré's _Dictionnaire de la langue française_ (1872–1877) catches fabricated lemmas (non-words invented by Stanza, like `trouvâmer` or `buver`)
-- Suffix rules resolve unambiguous verb forms
-- Cross-pipeline comparison between Stanza and spaCy flags lemma, tense/mood, and UPOS disagreements
-- A subject–verb person agreement checker flags mismatches between unambiguous subject pronouns and the verb's Person feature
-
-Next, ensembles of local LLM classifiers (`mistral-small3.2:24b`, `qwen3:8b`, or `gemma3:12b`) flag likely errors in ambiguous or context-dependent cases:
-- Lemma errors where both candidates are real words (e.g., prier vs prendre)
-- Tense/mood mistagging
-- AUX/VERB confusion
-- ADJ/ADV misclassification
-- `que` disambiguation (relative pronoun vs complementizer vs restrictive adverb)
-
-Finally, tokens flagged by at least one of the above layers are escalated to a stronger model (`claude-sonnet-4-5`) for final adjudication with full sentence context. This layered approach is cheaper and more accurate than sending raw Stanza output to a single, more powerful LLM.
-
-I've applied this pipeline to a subset of the ELTeC-fra corpus (about 600,000 tokens from 80 novels) to produce corrected CoNLL-U that will serve as training data for a domain-adapted Stanza model for 19th-century literary French. If the resulting model generalizes well, I will then use it to annotate the remaining millions of tokens in the Isosceles corpus. The resulting model should also be useful to anyone working computationally with 19th-century French literature who wants UD v2-compliant annotation. I will release the model publicly when training completes sometime around the middle of March, 2026.
+I've applied this pipeline to a subset of the ELTeC-fra corpus — about 600,000 tokens from 80 novels — to produce high-quality CoNLL-U that will eventually serve as training data for a domain-adapted Stanza model for 19th-century literary French. If the resulting model generalizes well, I'll use it to annotate the remaining 6 million of tokens in the Isosceles corpus. I plan to release the model publicly when training completes, around mid-March 2026.
 
 ## Choosing an annotation stack
 My goal is to get high-quality, UD v2-compliant CoNLL-U with reliable tokenization, lemmas, UPOS tags, and morphological features. I evaluated three tools for the purpose: spaCy (`fr_dep_news_trf`), Stanza (GSD treebank model), and Stanford CoreNLP.
@@ -39,26 +24,46 @@ For sentence segmentation, I chose CoreNLP for its consistency across French and
 
 For annotation, Stanza's GSD model produces the most consistent UD v2 output. I initially tried the default "combined" model, which was trained on multiple treebanks, but the mixture of annotation conventions there tended to produce inconsistent results, as Stanza itself warns in [the documentation](https://stanfordnlp.github.io/stanza/combined_models.html).
 
-spaCy was initially attractive for its stronger dependency parsing. But, in the end, I found that none of the available parsers could produce satisfactory structural parses for my purposes, and I decided to leave dependency parsing out of scope. With this decision out of the way, Stanza's richer inventory of morphological features, and its native UD v2 compliance, made it the better choice.
+spaCy was initially attractive for its stronger dependency parsing. But, in the end, I found that none of the available parsers could produce satisfactory structural parses for my purposes, and I decided to leave dependency parsing out of scope. With dependency relations off the table, then, Stanza became the better choice given its richer set of morphological features and native UD v2 compliance.
 
 CoreNLP's French lemmatizer turned out not to be competitive with these more recent tools; for most tokens, it simply returns the surface form or its lowercased variant.
 
 ## What Stanza gets wrong
 ### Passé simple tagged as present tense
-This is the largest single error class. In much first-person narration in French, *passé simple* is the primary narrative tense. But many *passé simple* forms are homographic with the present tense, and Stanza frequently defaults to present.
+This is the largest single error class. In much first-person narration in French, *passé simple* is the primary narrative tense. But Stanza frequently cannot distinguish this from present tense.
 
 ### Fabricated infinitives
-Stanza's lemmatizer sometimes invents infinitives that don't exist in French. These are plausible-looking but wrong: `trouvâmes` → `trouvâmer` (should be `trouver`), `parurent` → `pararer` (should be `paraître`), `haïssez` → `haïsser` (should be `haïr`), `buvaient` → `buver` (should be `boire`), `entrâmes` → `entrâmer` (should be `entrer`). The *passé simple* and literary past forms are the most affected.
+Stanza's lemmatizer sometimes invents infinitives that don't exist in French:
+- `trouvâmes` → `trouvâmer` (should be `trouver`)
+- `parurent` → `pararer` (should be `paraître`)
+- `haïssez` → `haïsser` (should be `haïr`)
+- `buvaient` → `buver` (should be `boire`)
+- `entrâmes` → `entrâmer` (should be `entrer`).
 
 ### Cross-verb confusion
-A related problem: Stanza assigns forms to the wrong real verb, attracted by character-level prefix overlap. The particularly systematic case is `prier`/`prendre`: I found that every short form of *prier* (`prie`, `pria`, `priez`) is lemmatized as `prendre`. The `pri-` prefix is shared with high-frequency *prendre* forms (`pris`, `prit`, `prend`), and presumably the character model can't distinguish them. Longer forms where the `-ier` conjugation pattern is visible (`priait`, `prié`, `priant`) are correctly assigned.
+Sometimes Stanza assigns forms to the wrong real verb, attracted by character-level prefix overlap. A particularly systematic case is `prier`/`prendre`: I found that every short form of *prier* (`prie`, `pria`, `priez`) is lemmatized as `prendre`. The `pri-` prefix is shared with high-frequency *prendre* forms (`pris`, `prit`, `prend`), and presumably the character-level lemmatizer model can't distinguish them. Longer forms where the `-ier` conjugation pattern is visible (`priait`, `prié`, `priant`) are correctly assigned.
 
-A few other confirmed cross-verb confusions: `durerait` → `devoir`, `dirent` → `devoir`, `pourrions` → `pourrir`.
+A few other confirmed cross-verb confusions: 
+- `durerait` → `devoir` (should be `durer`)
+- `dirent` → `devoir` (should be `dire`)
+- `pourrions` → `pourrir` (should be `pouvoir`)
 
 ### Conditional and subjunctive misanalysis
-Conditional forms are tagged as indicative present, imperfect subjunctive forms are tagged as indicative. These are morphologically distinct — `retournerait` is not a present-tense form under any analysis.
+Some verb forms are being labeled as the wrong tense. For example, conditional forms are marked as present tense, and literary past subjunctive forms are marked as simple indicative forms. But these forms have distinct endings in French. A word like `retournerait`, for example, cannot be present tense — its ending marks it as conditional.
 
-## Cross-pipeline comparison
+## The layered correction pipeline
+The pipeline combines three layers of detection. Tokens flagged by any layer are escalated to a stronger model (Claude Sonnet) for final adjudication, described in a later section.
+
+### 1. Rule-based filters
+The first layer handles cases where errors can be detected deterministically with high likelihood:
+
+1. Each lemma is checked against a period-appropriate dictionary, Littré's _Dictionnaire de la langue française_ (1872–1877).
+
+2. Some verb forms are unambiguous on their own: the passé simple endings `-âmes`, `-âtes`, `-èrent` can only belong to one tense, regardless of context. A small set of heuristics detects violations of these rules.
+
+3. A simple subject-verb agreement checker flags mismatches between unambiguous subject pronouns and the verb's `Person` feature.
+
+### 2. Cross-pipeline comparison
 Although I found Stanza more reliable overall, it proved useful to also have outputs from spaCy on hand for comparison. In particular, cases where Stanza and spaCy disagree have turned out to provide a valuable error-detection signal.
 
 To leverage this signal, I built a comparison tool that aligns Stanza and spaCy outputs by token (handling MWT expansion differences) and checks whether the two parsers converge on the same annotation or not. Across the 600k tokens of my training set (i.e. chunks from 80 ELTeC-Fra novels):
@@ -72,9 +77,9 @@ To leverage this signal, I built a comparison tool that aligns Stanza and spaCy 
 
 Not all of these are errors. Many are convention differences: Stanza follows GSD conventions for pronoun lemmas (`lui` for 3sg subject, `moi` for 1sg), while spaCy normalizes differently (`il`, `je`). Gendered noun lemmas, ligature normalization (`sœur`/`soeur`), and the participle-adjective boundary account for much of the rest.
 
-After filtering conventional disagreements such as these, roughly 20,000 substantive disagreements remain. These are flagged as candidates for correction.
+After applying some heuristics to filter out these merely conventional disagreements, roughly 20,000 substantive disagreements remain.
 
-### Tense and mood
+#### Tense and mood
 The comparison extends to morphological features. Across the 600k tokens of the test set, almost 17k tokens show tense or mood disagreements between the two pipelines. The most frequent patterns:
 
 | Count | Stanza | spaCy |
@@ -86,32 +91,17 @@ The comparison extends to morphological features. Across the 600k tokens of the 
 
 The top three patterns alone flag 2,353 tokens — the same *passé simple*, future, and imparfait errors found during manual review. SpaCy is not always right (it over-corrects toward *passé simple* on stative verbs like `s'agir`, and mishandles imperfect subjunctive), but it often catches tense errors that were missed entirely by the local LLM models used later in the pipeline.
 
-## Model selection for local LLM review
-The local LLM review is a set of binary classifiers, each tuned to one error type, each using the model best suited to that task.
+### 3. Targeted LLM classifiers
+For situations requiring contextual judgment that neither above approach can easily provide, I used a set of local LLM classifiers, each tuned to a single error type.
 
-I evaluated four models — Mistral-Nemo (12B), Qwen 3 (8B), Gemma 3 (12B), and Mistral-Small 3.2 (24B, Q4 quantized to fit 24 GB RAM) — across five classifier tasks on test chunks from several ELTeC authors (Audoux, Allais, Balzac, Flaubert, Montagne, Rolland).
+I evaluated four models — Mistral-Nemo (12B), Qwen 3 (8B), Gemma 3 (12B), and Mistral-Small 3.2 (24B, Q4 quantized to fit 24 GB RAM) — across five classifier tasks on test chunks from several ELTeC authors (Audoux, Allais, Balzac, Flaubert, Montagne, Rolland). In general, the Mistral models performed best at the lemma task, while Qwen and Gemma had strengths in grammatical judgments. The task and the selected model are described below:
+1. Lemma correctness (_Mistral-Small 3.2_). Where both the current lemma and a candidate replacement are real words (e.g., prier vs prendre), a classifier asks whether the current lemma is correct in context given GSD treebank conventions. This complements the Littré dictionary check, which only catches non-words.
+2. Tense/mood tagging (_Qwen3 + Gemma3_ (union)). A classifier flags verb forms whose tense or mood tag may be wrong, targeting the passé simple/present and conditional/indicative confusions described above.
+3. AUX/VERB distinction (_Qwen3_). French auxiliary verbs (avoir, être) are tagged AUX in some syntactic contexts and VERB in others. A classifier checks whether the current tag is correct.
+4. que disambiguation (_Gemma3_). The word que can be a relative pronoun (PRON), a complementizer (SCONJ), or a restrictive adverb (ADV). Stanza sometimes assigns the wrong category, and the correct choice depends on syntactic context.
+5. ADJ↔ADV misclassification (_Qwen3_). A closed list of 28 lemmas that can function as either ADJ or ADV depending on context (23 from the GSD treebank, 5 common 19th-century additions). A classifier checks each occurrence against per-word usage guidance.
 
-### Lemma classification
-The lemma classifier asks whether a lemma is correct _in context_, given GSD treebank conventions. Mistral-Small 3.2 was most promising in this domain.
-
-The Littré + Mistral-Small combination is complementary: Littré catches non-word lemmas, Mistral-Small catches real-word confusions.
-
-### Tense/mood classification
-Qwen had the best precision here but a low recall rate. Gemma, on the other hand, serves as a recall-oriented backup: it catches some errors Qwen misses but produces more false positives. But some false positives are tolerable, as flagged tokens will go to Sonnet for a final review, anyway. 
-
-The union of Qwen and Gemma flags, after filtering, gives the best candidate set for detecting tense/mood errors.
-
-### AUX/VERB classification
-Qwen was excellent on this classification task across all evaluated chunks — perfect or near-perfect precision and recall.
-
-### `que` classification
-Gemma was perfect — zero false flags across all evaluated chunks. Qwen produced false PRON→SCONJ flags on relative `que` in multi-clause sentences. Mistral-Nemo consistently misclassified in both directions.
-
-### ADJ↔ADV classification
-A fifth classifier was added after the initial evaluation revealed that Stanza mistagged French words that swing between ADJ and ADV depending on context. This classifier uses a closed word list of 28 target lemmas (23 from the GSD treebank, 5 common 19th-century additions) with per-word usage guidance interpolated into the prompt. Qwen handles this well.
-
-### Self-contradiction filter
-As a post-processing step before final Sonnet review, I discarded any flag where the model's proposed correction equals the current value. This addresses a frequent deficiency in all LLM models observed: a model flags a token, generates reasoning about why it might be wrong, but then proposes no actual change.
+As a post-processing step, I discarded any cases of model self-contradiction: any flag where the model's proposed correction is the same as the current value. This addresses a frequent deficiency across all LLM models tested.
 
 ### Summary
 The resulting pipeline architecture, after three rounds of evaluation and refinement:
@@ -125,9 +115,11 @@ The resulting pipeline architecture, after three rounds of evaluation and refine
 | ADJ↔ADV | Qwen 3 8B | Closed word list + syntactic judgment |
 
 ## Final review with Sonnet
-The flags from the local classifiers are submitted to Claude Sonnet (`claude-sonnet-4-5`). Each prompt contains the sentence, the flagged token with its current annotation, a targeted set of instructions about GSD treebank conventions, and the proposed correction (which it's free to change if necessary). Sonnet then returns a structured JSON response: either `"action": "correct"` with updated fields, or `"action": "no_change"` with a reason.
+The flags from the local classifiers are submitted to Claude Sonnet (`claude-sonnet-4-5`). Each prompt contains the sentence, the flagged token with its current annotation, a targeted set of instructions about GSD treebank conventions, and the proposed correction (which Sonnet is free to change if necessary). Sonnet then returns a structured JSON response: either `"action": "correct"` with updated fields, or `"action": "no_change"` with a reason.
 
 Sonnet's review is consistently very good but not perfect. It tends to fail, for example, on forms that are genuinely ambiguous between two tenses. The 3sg `-it` ending of second-group verbs is identical in present and *passé simple* (`envahit`, `grandit`, `finit`). When a classifier or spaCy flags one of these, Sonnet sometimes accepts the change even when context clearly favors present tense. This failure is consistent across models (Opus produces the same error) and across temperature settings. For these ambiguous forms, a contextual heuristic upstream may be needed: if all other finite verbs in the sentence are present tense.
+
+Still, the resulting patched CoNLL-U is considerably more accurate than the raw outputs from Stanza. Soon I'll follow up with some specific numbers.
 
 ## What's next
 Once processing completes in early March, 2026, my training set of ELTeC French (~600,000 words across 80 novels) will be used to train a domain-adapted Stanza model for literary French. The question is how much the corrected training data improves tagging accuracy on held-out literary text compared to the stock GSD model. I'll report on that when the time comes.
