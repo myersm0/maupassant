@@ -57,11 +57,11 @@ The pipeline combines three layers of detection. Tokens flagged by any layer are
 ### 1. Rule-based filters
 The first layer handles cases where errors can be detected deterministically with high likelihood:
 
-1. Each lemma is checked against a period-appropriate dictionary, Littré's _Dictionnaire de la langue française_ (1872–1877).
+- Each lemma is checked against a period-appropriate dictionary, Littré's _Dictionnaire de la langue française_ (1872–1877).
 
-2. Some verb forms are unambiguous on their own: the passé simple endings `-âmes`, `-âtes`, `-èrent` can only belong to one tense, regardless of context. A small set of heuristics detects violations of these rules.
+- Some verb forms are unambiguous on their own: the passé simple endings `-âmes`, `-âtes`, `-èrent` can only belong to one tense, regardless of context. A small set of heuristics detects violations of these rules.
 
-3. A simple subject-verb agreement checker flags mismatches between unambiguous subject pronouns and the verb's `Person` feature.
+- A simple subject-verb agreement checker flags mismatches between unambiguous subject pronouns and the verb's `Person` feature.
 
 ### 2. Cross-pipeline comparison
 Although I found Stanza more reliable overall, it proved useful to also have outputs from spaCy on hand for comparison. In particular, cases where Stanza and spaCy disagree have turned out to provide a valuable error-detection signal.
@@ -95,11 +95,11 @@ The top three patterns alone flag 2,353 tokens — the same *passé simple*, fut
 For situations requiring contextual judgment that neither above approach can easily provide, I used a set of local LLM classifiers, each tuned to a single error type.
 
 I evaluated four models — Mistral-Nemo (12B), Qwen 3 (8B), Gemma 3 (12B), and Mistral-Small 3.2 (24B, Q4 quantized to fit 24 GB RAM) — across five classifier tasks on test chunks from several ELTeC authors (Audoux, Allais, Balzac, Flaubert, Montagne, Rolland). In general, the Mistral models performed best at the lemma task, while Qwen and Gemma had strengths in grammatical judgments. The task and the selected model are described below:
-1. Lemma correctness (_Mistral-Small 3.2_). Where both the current lemma and a candidate replacement are real words (e.g., prier vs prendre), a classifier asks whether the current lemma is correct in context given GSD treebank conventions. This complements the Littré dictionary check, which only catches non-words.
-2. Tense/mood tagging (_Qwen3 + Gemma3_ (union)). A classifier flags verb forms whose tense or mood tag may be wrong, targeting the passé simple/present and conditional/indicative confusions described above.
-3. AUX/VERB distinction (_Qwen3_). French auxiliary verbs (avoir, être) are tagged AUX in some syntactic contexts and VERB in others. A classifier checks whether the current tag is correct.
-4. que disambiguation (_Gemma3_). The word que can be a relative pronoun (PRON), a complementizer (SCONJ), or a restrictive adverb (ADV). Stanza sometimes assigns the wrong category, and the correct choice depends on syntactic context.
-5. ADJ↔ADV misclassification (_Qwen3_). A closed list of 28 lemmas that can function as either ADJ or ADV depending on context (23 from the GSD treebank, 5 common 19th-century additions). A classifier checks each occurrence against per-word usage guidance.
+1. **Lemma correctness** (_Mistral-Small 3.2_). Where both the current lemma and a candidate replacement are real words (e.g., prier vs prendre), a classifier asks whether the current lemma is correct in context given GSD treebank conventions. This complements the Littré dictionary check, which only catches non-words.
+2. **Tense/mood tagging** (_Qwen3 + Gemma3_ (union)). A classifier flags verb forms whose tense or mood tag may be wrong, targeting the passé simple/present and conditional/indicative confusions described above.
+3. **AUX/VERB distinction** (_Qwen3_). French auxiliary verbs (avoir, être) are tagged AUX in some syntactic contexts and VERB in others. A classifier checks whether the current tag is correct.
+4. **`que` disambiguation** (_Gemma3_). The word que can be a relative pronoun (PRON), a complementizer (SCONJ), or a restrictive adverb (ADV). Stanza sometimes assigns the wrong category, and the correct choice depends on syntactic context.
+5. **ADJ↔ADV misclassification** (_Qwen3_). A closed list of 28 lemmas that can function as either ADJ or ADV depending on context (23 from the GSD treebank, 5 common 19th-century additions). A classifier checks each occurrence against per-word usage guidance.
 
 As a post-processing step, I discarded any cases of model self-contradiction: any flag where the model's proposed correction is the same as the current value. This addresses a frequent deficiency across all LLM models tested.
 
