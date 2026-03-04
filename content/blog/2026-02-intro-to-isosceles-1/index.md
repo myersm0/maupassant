@@ -1,7 +1,7 @@
 +++
 title = "Introducing the Isosceles corpus: its composition and motivation"
 date = 2026-02-18
-description = "A quick introduction to the corpus for anyone interested in working with it, and as contextual grounding for later work."
+description = "A quick introduction to the Isosceles corpus for anyone interested in working with it, and as contextual grounding for later work."
 
 [taxonomies]
 tags = ["alignment"]
